@@ -1,0 +1,11 @@
+1、样例代码对应的论文为：Accelerated MRI thermometry by direct estimation of temperature from undersampled k-space data
+
+2、代码是用matlab编写的，代码里面包含了核磁图像数据可直接使用。
+
+3、必须使用linux系统才能正常运行样例代码，推荐您使用Ubuntu系统。
+
+4、运行代码之前，需在matlab中安装插件。将fessler.tgz解压后的目录加入matlab路径（此压缩包中包含了说明文档可供参考）。您也可以直接下载该文件（http://web.eecs.umich.edu/~fessler/code/index.html）。
+
+5、wgrissom-k-space-thermometry-ada4553d4f80.zip 此文件包含样例代码，打开后可在matlab中直接运行khtdemo_cart.m文件，程序运行结束后输出温度图。
+
+6、“运行结果”目录下存放的是运行代码后输出的结果，包含原始核磁图像和计算出的温度图。

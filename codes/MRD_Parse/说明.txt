@@ -1,0 +1,11 @@
+parse_mrd  + mrd_3D
+解析MRD数据，生成图片和kspace数据
+
+merge_phase_from_MRD
+将8个通道的相位数据融合为一，用于测温算法
+
+get_phase_from_mrd_image
+从提取出的图片，转换位相位数据 （不建议使用，相位信息差异小）
+
+mrd_3D_BACKUP
+备份原始的解析MRD数据的代码
