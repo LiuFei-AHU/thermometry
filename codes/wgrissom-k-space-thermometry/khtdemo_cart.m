@@ -8,11 +8,11 @@ addpath('util');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load the data and get the baselines
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-load khtdemo_data_cart2;
+load khtdemo_data_cart4;
 
 ct = -7.7871; % degrees C/radian (phase->temp conversion factor)
 [Nx,Ny,Nc,Nt] = size(data); % # x,y-locs, coils, dynamics
-maxtind = 6; % 9th dynamic has highest temp
+maxtind = 2; % 9th dynamic has highest temp
 
 % recon the baselines
 for ii = 1:Nc

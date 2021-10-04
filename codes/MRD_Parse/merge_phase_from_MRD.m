@@ -6,10 +6,13 @@
 %%%% 8个通道的相位数据累加
 data = zeros( 256,256,1,11);
 
-root_dir = 'D:\personal\thermometry\codes\MRD_Parse\MRD\20210903\';
-
-for d = 4:14
-    pathname = [root_dir,num2str(d),'\kspace_data_from_mrd\'];
+root_dir = 'D:\personal\thermometry\codes\MRD_Parse\MRD\20210930\water\';
+subdir = dir(root_dir);
+for s = 1:length(subdir)
+    if( isequal( subdir(s).name, '.' ) || isequal( subdir(s).name, '..')|| ~subdir(s).isdir)
+            continue;
+    end
+    pathname = [root_dir,subdir(s).name,'\kspace_data_from_mrd\'];
     maindir = dir(pathname);
     one_data = zeros( 256,256,1);
     for i = 1 : length( maindir )
@@ -27,10 +30,10 @@ for d = 4:14
             one_data = one_data + KspaceData(:,:,1);
         end
     end
-      data(:,:,:,d-3) = one_data;
+      data(:,:,:,s+1) = one_data;
 end
 data(:,:,:,1) = data(:,:,:,11);   % 将最后一组加热图作为基线可以去除假体上下位置的噪声
-save('khtdemo_data_cart2.mat','data') % 保存数据
+save('khtdemo_data_cart5.mat','data') % 保存数据
 disp('Done!')
 
 % data(:,:,:,1)
