@@ -21,6 +21,61 @@ from scipy import special as sp
 from PIL import Image
 import matplotlib.pyplot as plt
 import cv2
+import torch
+
+
+def mrd_3d(filename, pathname):
+    """
+    解析MRD数据，从matlab将代码迁移到Python
+    :param filename: MRD文件名
+    :param pathname: 路径名
+    :return:
+    """
+    reordering = 'seq'
+
+    # 用于保存提取的图片
+    curr = os.path.join(pathname, 'mrd_pared_images')
+    if not os.path.exists(curr):
+        os.mkdir(curr)
+
+    # 用于保存提取的kspace数据
+    kspace_filename = os.path.join(pathname, 'kspace_data_from_mrd')
+    if not os.path.exists(kspace_filename):
+        os.mkdir(kspace_filename)
+
+    # disp([pathname, filename]
+    f_name = os.path.join(pathname, filename)
+    f = open(f_name, 'rb')  # Define the file id
+    val = f.read(4)  # val为MRD文件前四个数据
+    xdim = int(val[0])  # 128
+    ydim = int(val[1])  # 128
+    zdim = int(val[2])  # 1
+    dim4 = int(val[3])  # 3
+
+    print(xdim, ydim)
+
+    f.seek(18)  # 从文件开始(Beginning of file)偏移18个字节的位置
+
+    f.seek(48)  # 从文件开始偏移48个字节的位置
+    f.seek(152)  # 从文件开始偏移152个字节的位置
+    val = f.read(2)
+    dim5 = int(val[0])  # 1
+    dim6 = int(val[1])
+    f.seek(256)  # 从文件开始偏移256个字节的位置
+    no_samples = xdim  # NOS - X: 12
+    no_views = ydim  # NOV - Y: 128
+    no_views_2 = zdim  # NOV2 - Z: 1
+    no_slices = dim4  # number of slices: 3
+    no_echoes = dim5  # 回波: 1
+    no_expts = dim6  # 输出: 1
+
+    onlydatatype = 3  # onlydatatype = '3'
+    iscomplex = 2  # 是否为复数：2为复数
+    dataformat = 'int16'
+
+    num2read = no_expts * no_echoes * no_slices * no_views_2 * no_views * no_samples * iscomplex  # *datasize;
+    m_total = f.read(num2read)  # reading all the data at once
+    print(m_total)
 
 
 def merge_kspace_from_mrd(root_dir, slice_num=0):
@@ -37,6 +92,8 @@ def merge_kspace_from_mrd(root_dir, slice_num=0):
     # dir = os.path.join(root_dir, r'{}\kspace_data_from_mrd')
 
     files = os.listdir(root_dir)
+    files.sort(key=lambda x: int(x[:]))
+
     data = np.zeros((256, 256, len(files) + 1), np.complex_)
 
     for i, nm in enumerate(files):
@@ -47,16 +104,25 @@ def merge_kspace_from_mrd(root_dir, slice_num=0):
             # print(i, dd)
             f_name = os.path.join(d, dd)
             m = loadmat(f_name)
-            if idx == 0:
-                one_data = m['KspaceData'][:, :, slice_num]
+            if m['KspaceData'].ndim == 3:
+                tmp = m['KspaceData'][:, :, slice_num]
             else:
-                one_data += m['KspaceData'][:, :, slice_num]
+                tmp = m['KspaceData'][:, :]
+            if idx == 0:
+                one_data = tmp
+            else:
+                one_data += tmp
+            # if idx == 0:
+            #     one_data = m['KspaceData'][:, :, slice_num]
+            # else:
+            #     one_data += m['KspaceData'][:, :, slice_num]
         data[:, :, i + 1] = one_data
+    # print('data.shape',data.shape,data.shape[2])
     data[:, :, 0] = data[:, :, data.shape[2] - 1]
     return data
 
 
-def merge_image_from_mrd(root_dir):
+def merge_image_from_mrd(root_dir, percent=80):
     """
     从MRD数据中直接提取幅度数据，按比例融合，过滤数值，保存
     可用作mask
@@ -64,8 +130,8 @@ def merge_image_from_mrd(root_dir):
     """
     assert root_dir is not None, 'root_dir must not be none'
 
-    # dir = r'E:\BaiduNetdiskDownload\20210903\{}\kspace_data_from_mrd'
     files = os.listdir(root_dir)
+    files.sort(key=lambda x: int(x[:]))
 
     for l in files:
         # d = dir.format(i)
@@ -75,7 +141,10 @@ def merge_image_from_mrd(root_dir):
         for idx, dd in enumerate(os.listdir(d)):
             f_name = os.path.join(d, dd)
             m = loadmat(f_name)
-            one_data = m['KspaceData'][:, :, 0]
+            if m['KspaceData'].ndim == 3:
+                one_data = m['KspaceData'][:, :, 0]
+            else:
+                one_data = m['KspaceData'][:, :]
             one_data = np.fliplr(np.fft.ifftshift(np.fft.ifft2(one_data)))
 
             mag = np.absolute(one_data)
@@ -104,7 +173,7 @@ def merge_image_from_mrd(root_dir):
         maxj = np.max(np.max(img_dst))
         if maxj > maxi:
             maxi = maxj
-        im_per = np.percentile(img_dst, 80)
+        im_per = np.percentile(img_dst, percent)
         print(im_per)
         # img_dst[img_dst < 0.01] = 0
         img_dst[img_dst < im_per] = 0
@@ -117,7 +186,7 @@ def merge_image_from_mrd(root_dir):
             np.save(f, img_dst)
         # Image.fromarray(np.array(img_dst)).show()
         # plt.subplot(111)
-        # plt.imshow(np.array(img_dst), vmin=0, vmax=maxi, cmap='gray')
+        # plt.imshow(np.array(img_dst), vmin=0, vmax=im_per, cmap='gray')
         # plt.show()
 
     return None
@@ -130,7 +199,9 @@ def show_image_from_npy(root_dir):
     """
     # root_dir = r'E:\BaiduNetdiskDownload\20210903'
     assert root_dir is not None, 'root_dir must not be none'
+
     files = os.listdir(root_dir)
+    files.sort(key=lambda x: int(x[:]))
 
     fig = plt.figure()
     for l, nm in enumerate(files):
@@ -140,7 +211,7 @@ def show_image_from_npy(root_dir):
         d = os.path.join(root_dir, str(nm), 'image_merged', '1.npy')
         img = np.load(d)
         maxi = np.max(np.max(img))
-        plt.subplot(330 + l+1)
+        plt.subplot(330 + l + 1)
         plt.imshow(np.array(img), vmin=0, vmax=maxi, cmap='gray')
         plt.axis('off')
         plt.subplots_adjust(wspace=0, hspace=0)
@@ -160,11 +231,13 @@ def merge_images_from_parsed_img(root_dir):
     assert root_dir is not None, 'root_dir must not be none'
 
     files = os.listdir(root_dir)
+    files.sort(key=lambda x: int(x[:]))
+
     # scans from 4-14
     for l in files:
         dir = os.path.join(root_dir, str(l), 'mrd_pared_images')
         # 4 slices
-        for s in range(1, 5):
+        for s in range(1, 2):  # 5
             # 8 channels
             imgs = []
             for i in range(1, 9):
@@ -324,6 +397,14 @@ def merge_images_from_parsed_img(root_dir):
     # cv2.destroyAllWindows()
 
 
+def mrd_process(dir, percent=80, show_image=False):
+    merge_image_from_mrd(dir, percent)  # 从MRD数据中直接提取幅度数据，mask
+    merge_kspace_from_mrd(dir)  # 从MRD中提取Kspace数据
+    merge_images_from_parsed_img(dir)  # 将解析出来的8通道的核磁图片进行融合
+    if show_image:
+        show_image_from_npy(dir)  # 显示过滤幅度图噪声后的幅度图像
+
+
 def phase_correlation(a, b):
     """
     计算两个复数的相位差
@@ -342,7 +423,7 @@ def phase_correlation(a, b):
     R = np.angle(R)
     # r = np.fft.ifft2(R)
     # r = np.maximum(r, 0)
-    # r = np.fft.fftshift(r)
+    # R = np.fft.fftshift(R)
     return R  # r.real
 
 
@@ -457,9 +538,9 @@ class Rice:
 
             return 0.5 - 0.5 * sp.erf(x / np.sqrt(2))
 
-        PDF = (1 / (2 * np.pi)) * np.exp(- self.K) * (1 + (np.sqrt(4 * np.pi * self.K) \
+        PDF = (1 / (2 * np.pi)) * np.exp(- self.K) * (1 + (np.sqrt(4 * np.pi * self.K)
                                                            * np.exp(
-                    self.K * (np.cos(self.theta - self.phi)) ** 2) * np.cos(self.theta - self.phi)) \
+                    self.K * (np.cos(self.theta - self.phi)) ** 2) * np.cos(self.theta - self.phi))
                                                       * (1 - q_func(
                     np.sqrt(2 * self.K) * np.cos(self.theta - self.phi))))
 
@@ -486,9 +567,78 @@ class Rice:
         return x, p
 
 
+def complex_multi(a, b):
+    """
+    复数乘法
+    :param a: 张量a[rel,img]
+    :param b: 张量b[rel,img]
+    :return: 复数乘法
+    """
+    r = a.shape[0]
+    c = torch.zeros([r, 2])
+    c[:, 0] = a[:, 0] * b[:, 0] - a[:, 1] * b[:, 1]
+    c[:, 1] = a[:, 0] * b[:, 1] + a[:, 1] * b[:, 0]
+    # for i in range(r):
+    #     c[i, 0] = a[i, 0] * b[i, 0] - a[i, 1] * b[i, 1]
+    #     c[i, 1] = a[i, 0] * b[i, 1] + a[i, 1] * b[i, 0]
+    return c
+
+
+def show_phase_temp_curve(x=None, y=None, plot='plot'):
+    """
+     画出相位差和温度差的关系曲线
+     :param x: 相位差
+     :param y: 温度差
+     :param plot: 散点图 or 折现图 => ['plot', 'scatter']
+     :return:
+     """
+
+    # X轴取值相位差，Y轴取值温度差
+    if x is None:
+        # 以2021.10.27 n2的数据为例，计算相位差和温度差的关系，画出关系曲线
+        print('phase data is required! \n This is an example data from 2021.10.27 n2')
+        x = [0.911758261,
+             0.891536749,
+             0.700557613,
+             0.606077677,
+             # 0.787883234,
+             # 0.829426096,
+             0.335970884,
+             0.325331918,
+             0.262157513
+             ]
+        y = [16.9,
+             14.3,
+             11.5,
+             8.7,
+             # 6.9,
+             # 5.1,
+             3.3,
+             2.4,
+             0.9
+             ]
+
+    # 坐标轴范围
+    plt.xlim(0, 1)
+    plt.ylim(0, 25)
+
+    # 画出相位差-温度差曲线
+    if plot == 'plot':
+        plt.plot(x, y, c='red', marker='o', label='phase temp mapping')
+    else:
+        plt.scatter(x, y, c='red', marker='o', label='phase temp mapping')
+    plt.ylabel('Temperature/℃')
+    plt.xlabel('Phase/diff')
+    plt.title("Curve of temperature variation")
+    plt.legend(loc='best')
+
+    plt.show()
+
+
 if __name__ == '__main__':
-    merge_image_from_mrd(r'D:\personal\thermometry\codes\MRD_Parse\MRD\20210930\water')
-    merge_kspace_from_mrd(r'D:\personal\thermometry\codes\MRD_Parse\MRD\20210930\water')
-    merge_images_from_parsed_img(r'D:\personal\thermometry\codes\MRD_Parse\MRD\20210930\water')
-    show_image_from_npy(r'D:\personal\thermometry\codes\MRD_Parse\MRD\20210930\heat')
-    # show_image_from_npy()
+    dir = r'D:\personal\thermometry\codes\MRD_Parse\MRD\20210903'
+    merge_image_from_mrd(dir, percent=80)  # 从MRD数据中直接提取幅度数据，mask
+    merge_kspace_from_mrd(dir)  # 从MRD中提取Kspace数据
+    merge_images_from_parsed_img(dir)  # 将解析出来的8通道的核磁图片进行融合
+    show_image_from_npy(dir)  # 显示过滤幅度图噪声后的幅度图像
+    # mrd_3d('Temp1.MRD', r'D:\personal\thermometry\codes\MRD_Parse\MRD\20211014\hrizontal1\1')
