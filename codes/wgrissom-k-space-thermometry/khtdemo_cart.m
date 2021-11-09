@@ -8,7 +8,7 @@ addpath('util');
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Load the data and get the baselines
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-load khtdemo_data_cart4;
+load ksapce_data1014_h3 ;
 
 ct = -7.7871; % degrees C/radian (phase->temp conversion factor)
 [Nx,Ny,Nc,Nt] = size(data); % # x,y-locs, coils, dynamics

@@ -5,7 +5,7 @@
 close all;clc;
 
 % [filename,pathname] = uigetfile('*.MRD');
-root_dir = 'D:\personal\thermometry\codes\MRD_Parse\MRD\20210930\pork\';
+root_dir = 'D:\personal\thermometry\codes\MRD_Parse\MRD\20211029\n7\';
 subdir = dir(root_dir);
 for s = 1 : length( subdir )
     if( isequal( subdir( s ).name, '.' )||...

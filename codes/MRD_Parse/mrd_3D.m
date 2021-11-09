@@ -106,11 +106,16 @@ function x = mrd_3D(filename,pathname)
     im=m_C;
     fclose(fid);                            %关闭指针
     KspaceData = zeros(fix(no_views),fix(no_samples),fix(no_slices));
+
     for t=1:no_slices
-        temp = im(t,:,:);
-    %     temp = reshape(temp,1*no_samples,no_views);
+        if (no_slices>1)
+            temp = im(t,:,:);
+        else
+            temp = im(:,:);
+        end
+    %   temp = reshape(temp,1*no_samples,no_views);
         KspaceData(:,:,t) = temp;
-        temp=squeeze(temp);
+    %   temp=squeeze(temp);
     end
 
     % 将MRD提取出来的kspace数据保存到文件中
@@ -131,8 +136,8 @@ function x = mrd_3D(filename,pathname)
 
     for f=1:no_slices
         imTemp=ifft2(KspaceData(:,:,f));  % Inverse descrete Fourier transform
-        imTemp=ifftshift(imTemp);           % Pixel value exchange Left and Right
-        imTemp=fliplr(imTemp);             % Rotation 旋转
+        imTemp=ifftshift(imTemp);         % Pixel value exchange Left and Right
+        imTemp=fliplr(imTemp);            % Rotation 旋转
 
         if (inter == 0)
             comp = comp+1;

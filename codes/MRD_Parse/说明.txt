@@ -1,5 +1,6 @@
+代码文件：
 parse_mrd  + mrd_3D
-解析MRD数据，生成图片和kspace数据
+解析MRD数据，生成幅度图片和kspace数据
 
 merge_phase_from_MRD
 将8个通道的相位数据融合为一，用于测温算法
